@@ -122,6 +122,7 @@ docker compose ps
 curl -I https://n8n.YOUR_DOMAIN.com/healthz
 ```
 
+**⚠️ This is NOT automated - read each command before executing**
 **⚠️ For production deployments, follow the [Detailed Installation](#-detailed-installation) guide below.**
 
 ## 📚 Detailed Installation
