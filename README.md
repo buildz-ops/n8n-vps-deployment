@@ -97,7 +97,7 @@ For experienced users, here's the condensed setup:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/YOUR_USERNAME/n8n-vps-deployment.git
+git clone https://github.com/buildz-ops/n8n-vps-deployment.git
 cd n8n-vps-deployment
 
 # 2. Configure environment
