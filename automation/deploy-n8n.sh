@@ -1851,16 +1851,12 @@ deploy_containers() {
     
     cd "$INSTALL_DIR"
     
-    # Create network
-    log_info "Creating Docker network..."
-    docker network create n8n-network 2>/dev/null || log_info "Network already exists"
-    
     # Pull images
     log_info "Pulling Docker images (this may take a few minutes)..."
     docker compose pull 2>&1 | tee -a "$LOG_FILE" &
     show_progress $! "Pulling Docker images"
     
-    # Start services
+    # Start services (Docker Compose will create the network automatically)
     log_info "Starting services..."
     docker compose up -d 2>&1 | tee -a "$LOG_FILE"
     
