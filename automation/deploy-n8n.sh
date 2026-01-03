@@ -485,20 +485,34 @@ detect_vps_ip() {
     # Try multiple methods to get public IP
     local ip=""
     
-    # Method 1: ip command
+    # Method 1: ip command (will get private IP on AWS/cloud providers)
     ip=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -1)
     
-    # Method 2: curl external services (if Method 1 fails or returns private IP)
+    # Method 2: curl external services (for public IP)
+    # Try these even if we got a private IP
     if [[ -z "$ip" ]] || [[ "$ip" =~ ^10\. ]] || [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]] || [[ "$ip" =~ ^192\.168\. ]]; then
-        ip=$(curl -s -4 ifconfig.me) || \
-        ip=$(curl -s -4 icanhazip.com) || \
-        ip=$(curl -s -4 ipecho.net/plain) || \
-        ip=$(dig +short myip.opendns.com @resolver1.opendns.com)
+        # Try curl methods (don't rely on dig which isn't installed yet)
+        ip=$(curl -s -4 --connect-timeout 5 ifconfig.me 2>/dev/null) || \
+        ip=$(curl -s -4 --connect-timeout 5 icanhazip.com 2>/dev/null) || \
+        ip=$(curl -s -4 --connect-timeout 5 ipinfo.io/ip 2>/dev/null) || \
+        ip=$(curl -s -4 --connect-timeout 5 api.ipify.org 2>/dev/null)
+    fi
+    
+    # If still no IP, get the private IP as fallback
+    if [[ -z "$ip" ]]; then
+        ip=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -1)
     fi
     
     if [[ -z "$ip" ]]; then
-        log_error "Could not detect VPS IP address"
-        exit 1
+        log_warning "Could not detect VPS IP address automatically"
+        echo ""
+        echo "Please enter your VPS public IP address:"
+        read -p "IP Address: " ip
+        
+        if [[ -z "$ip" ]]; then
+            log_error "IP address is required"
+            exit 1
+        fi
     fi
     
     VPS_IP="$ip"
