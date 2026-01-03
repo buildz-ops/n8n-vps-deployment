@@ -85,17 +85,17 @@ log_error() {
 }
 
 log_success() {
-    echo "${GREEN}✓${RESET} $1"
+    echo "${GREEN}[  OK  ]${RESET} $1"
     log "SUCCESS: $1"
 }
 
 log_warning() {
-    echo "${YELLOW}⚠${RESET} $1"
+    echo "${YELLOW}[ WARN ]${RESET} $1"
     log "WARNING: $1"
 }
 
 log_info() {
-    echo "${BLUE}ℹ${RESET} $1"
+    echo "${BLUE}[ INFO ]${RESET} $1"
     log "INFO: $1"
 }
 
@@ -157,15 +157,15 @@ wait_for_user() {
 show_progress() {
     local pid=$1
     local message=$2
-    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local spin='|/-\'
     local i=0
     
     while kill -0 $pid 2>/dev/null; do
-        i=$(( (i+1) %10 ))
-        printf "\r${CYAN}${spin:$i:1}${RESET} $message"
+        i=$(( (i+1) %4 ))
+        printf "\r${CYAN}[${spin:$i:1}]${RESET} $message"
         sleep 0.1
     done
-    printf "\r${GREEN}✓${RESET} $message\n"
+    printf "\r${GREEN}[  OK  ]${RESET} $message\n"
 }
 
 # ===========================================
@@ -727,6 +727,9 @@ update_system() {
         return 0
     fi
     
+    # Ensure non-interactive mode for all apt operations
+    export DEBIAN_FRONTEND=noninteractive
+    
     sudo apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null &
     show_progress $! "Updating package lists"
     
@@ -778,7 +781,7 @@ setup_unattended_upgrades() {
     
     sudo apt-get install -y -qq unattended-upgrades 2>&1 | tee -a "$LOG_FILE" > /dev/null
     echo 'unattended-upgrades unattended-upgrades/enable_auto_updates boolean true' | sudo debconf-set-selections
-    sudo dpkg-reconfigure -plow unattended-upgrades 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades 2>&1 | tee -a "$LOG_FILE" > /dev/null
     
     log_success "Automatic security updates configured"
 }
