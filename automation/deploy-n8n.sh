@@ -393,12 +393,11 @@ detect_existing_docker() {
         else
             log_warning "Docker Compose (v2) not found. Will install."
         fi
-        
-        return 0
     else
         log_info "Docker not found. Will install during system preparation."
-        return 1
     fi
+    
+    return 0
 }
 
 detect_existing_n8n() {
