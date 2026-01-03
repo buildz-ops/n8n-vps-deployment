@@ -25,6 +25,7 @@ ERROR_LOG="/var/log/n8n-deploy-error.log"
 # CLI flags
 NON_INTERACTIVE=false
 SKIP_SECURITY=false
+SKIP_DNS_CHECK=false
 DRY_RUN=false
 VERBOSE=false
 ACTION="install"
@@ -250,13 +251,39 @@ check_system_requirements() {
     TOTAL_RAM_GB=$((total_ram_kb / 1024 / 1024))
     log_info "Total RAM: ${TOTAL_RAM_GB}GB"
     
-    if [[ $TOTAL_RAM_GB -lt 8 ]]; then
-        log_error "Insufficient RAM: ${TOTAL_RAM_GB}GB. Minimum 8GB required, 12GB recommended."
+    if [[ $TOTAL_RAM_GB -lt 4 ]]; then
+        log_error "Insufficient RAM: ${TOTAL_RAM_GB}GB. Minimum 4GB required for basic operation."
+        echo ""
+        echo "${RED}Your system has only ${TOTAL_RAM_GB}GB of RAM.${RESET}"
+        echo "n8n requires at least 4GB RAM to run with minimal features."
+        echo ""
         exit 1
+    elif [[ $TOTAL_RAM_GB -lt 6 ]]; then
+        log_warning "Low RAM: ${TOTAL_RAM_GB}GB detected. This is the absolute minimum."
+        echo ""
+        echo "${YELLOW}⚠ WARNING: Your system has only ${TOTAL_RAM_GB}GB RAM${RESET}"
+        echo "  - Minimum viable: 4GB"
+        echo "  - Recommended: 8GB+"
+        echo "  - Optimal: 12GB+"
+        echo ""
+        echo "With ${TOTAL_RAM_GB}GB you may experience:"
+        echo "  - Slow performance under load"
+        echo "  - Limited concurrent workflows"
+        echo "  - Possible OOM (Out of Memory) errors"
+        echo ""
+        if ! confirm "Continue with ${TOTAL_RAM_GB}GB RAM? (Not recommended for production)"; then
+            exit 1
+        fi
+    elif [[ $TOTAL_RAM_GB -lt 8 ]]; then
+        log_warning "RAM is ${TOTAL_RAM_GB}GB. 8GB+ recommended for production use."
+        echo ""
+        echo "${YELLOW}Your system has ${TOTAL_RAM_GB}GB RAM (acceptable but not optimal)${RESET}"
+        echo "Resource limits will be reduced to fit available memory."
+        echo ""
     elif [[ $TOTAL_RAM_GB -lt 12 ]]; then
-        log_warning "RAM is ${TOTAL_RAM_GB}GB. 12GB recommended for optimal performance."
+        log_success "RAM check passed: ${TOTAL_RAM_GB}GB (good for most workloads)"
     else
-        log_success "RAM check passed: ${TOTAL_RAM_GB}GB"
+        log_success "RAM check passed: ${TOTAL_RAM_GB}GB (excellent for production)"
     fi
     
     # Check disk space
@@ -694,7 +721,7 @@ install_essential_packages() {
     local packages=(
         curl wget git vim htop net-tools unzip
         software-properties-common ca-certificates
-        gnupg lsb-release apache2-utils
+        gnupg lsb-release apache2-utils dnsutils jq
     )
     
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -1044,6 +1071,11 @@ harden_security() {
 # ===========================================
 
 verify_dns() {
+    if [[ "$SKIP_DNS_CHECK" == "true" ]]; then
+        log_info "Skipping DNS verification (--skip-dns-check flag)"
+        return 0
+    fi
+    
     log_step "Verifying DNS Configuration"
     
     echo "Checking if $DOMAIN resolves to $VPS_IP..."
@@ -1167,21 +1199,92 @@ create_docker_compose() {
     # Determine resource limits based on RAM
     local pg_memory="4G"
     local redis_memory="1G"
+    local redis_maxmemory="950mb"
     local n8n_memory="2G"
     local worker_memory="2G"
+    local pg_shared_buffers="1024MB"
+    local pg_effective_cache="3072MB"
+    local pg_maintenance_mem="256MB"
+    local pg_wal_buffers="16MB"
+    local pg_work_mem="4MB"
+    local pg_min_wal="1GB"
+    local pg_max_wal="4GB"
     
-    if [[ $TOTAL_RAM_GB -lt 12 ]]; then
+    if [[ $TOTAL_RAM_GB -lt 6 ]]; then
+        # 4-5GB RAM: Minimal configuration
+        pg_memory="1G"
+        redis_memory="256M"
+        redis_maxmemory="200mb"
+        n8n_memory="1G"
+        worker_memory="1G"
+        pg_shared_buffers="256MB"
+        pg_effective_cache="768MB"
+        pg_maintenance_mem="64MB"
+        pg_wal_buffers="4MB"
+        pg_work_mem="2MB"
+        pg_min_wal="256MB"
+        pg_max_wal="512MB"
+        log_info "Using minimal resource limits for ${TOTAL_RAM_GB}GB RAM (4GB configuration)"
+    elif [[ $TOTAL_RAM_GB -lt 8 ]]; then
+        # 6-7GB RAM: Reduced configuration
         pg_memory="2G"
         redis_memory="512M"
+        redis_maxmemory="450mb"
         n8n_memory="1536M"
         worker_memory="1536M"
-        log_info "Using reduced resource limits for ${TOTAL_RAM_GB}GB RAM"
-    elif [[ $TOTAL_RAM_GB -ge 16 ]]; then
+        pg_shared_buffers="512MB"
+        pg_effective_cache="1536MB"
+        pg_maintenance_mem="128MB"
+        pg_wal_buffers="8MB"
+        pg_work_mem="3MB"
+        pg_min_wal="512MB"
+        pg_max_wal="1GB"
+        log_info "Using reduced resource limits for ${TOTAL_RAM_GB}GB RAM (6GB configuration)"
+    elif [[ $TOTAL_RAM_GB -lt 12 ]]; then
+        # 8-11GB RAM: Standard configuration
+        pg_memory="3G"
+        redis_memory="768M"
+        redis_maxmemory="700mb"
+        n8n_memory="2G"
+        worker_memory="2G"
+        pg_shared_buffers="768MB"
+        pg_effective_cache="2304MB"
+        pg_maintenance_mem="192MB"
+        pg_wal_buffers="12MB"
+        pg_work_mem="4MB"
+        pg_min_wal="512MB"
+        pg_max_wal="2GB"
+        log_info "Using standard resource limits for ${TOTAL_RAM_GB}GB RAM (8GB configuration)"
+    elif [[ $TOTAL_RAM_GB -lt 16 ]]; then
+        # 12-15GB RAM: Recommended configuration (DEFAULT)
+        pg_memory="4G"
+        redis_memory="1G"
+        redis_maxmemory="950mb"
+        n8n_memory="2G"
+        worker_memory="2G"
+        pg_shared_buffers="1024MB"
+        pg_effective_cache="3072MB"
+        pg_maintenance_mem="256MB"
+        pg_wal_buffers="16MB"
+        pg_work_mem="4MB"
+        pg_min_wal="1GB"
+        pg_max_wal="4GB"
+        log_info "Using recommended resource limits for ${TOTAL_RAM_GB}GB RAM (12GB configuration)"
+    else
+        # 16GB+ RAM: High-performance configuration
         pg_memory="6G"
         redis_memory="2G"
+        redis_maxmemory="1900mb"
         n8n_memory="3G"
         worker_memory="3G"
-        log_info "Using increased resource limits for ${TOTAL_RAM_GB}GB RAM"
+        pg_shared_buffers="1536MB"
+        pg_effective_cache="4608MB"
+        pg_maintenance_mem="384MB"
+        pg_wal_buffers="32MB"
+        pg_work_mem="8MB"
+        pg_min_wal="2GB"
+        pg_max_wal="8GB"
+        log_info "Using high-performance resource limits for ${TOTAL_RAM_GB}GB RAM (16GB+ configuration)"
     fi
     
     cat > "$INSTALL_DIR/docker-compose.yml" <<EOF
@@ -1243,15 +1346,15 @@ services:
     command:
       - "postgres"
       - "-c"
-      - "shared_buffers=1024MB"
+      - "shared_buffers=$pg_shared_buffers"
       - "-c"
-      - "effective_cache_size=3072MB"
+      - "effective_cache_size=$pg_effective_cache"
       - "-c"
-      - "maintenance_work_mem=256MB"
+      - "maintenance_work_mem=$pg_maintenance_mem"
       - "-c"
       - "checkpoint_completion_target=0.9"
       - "-c"
-      - "wal_buffers=16MB"
+      - "wal_buffers=$pg_wal_buffers"
       - "-c"
       - "default_statistics_target=100"
       - "-c"
@@ -1259,11 +1362,11 @@ services:
       - "-c"
       - "effective_io_concurrency=200"
       - "-c"
-      - "work_mem=4MB"
+      - "work_mem=$pg_work_mem"
       - "-c"
-      - "min_wal_size=1GB"
+      - "min_wal_size=$pg_min_wal"
       - "-c"
-      - "max_wal_size=4GB"
+      - "max_wal_size=$pg_max_wal"
       - "-c"
       - "max_connections=100"
     healthcheck:
@@ -1286,7 +1389,7 @@ services:
     restart: unless-stopped
     command: >
       redis-server
-      --maxmemory 512mb
+      --maxmemory $redis_maxmemory
       --maxmemory-policy noeviction
       --appendonly yes
       --appendfsync everysec
@@ -2102,6 +2205,7 @@ show_usage() {
     echo "  --install-dir DIR         Installation directory (default: /opt/n8n)"
     echo "  -y, --yes                 Non-interactive mode (auto-accept prompts)"
     echo "  --skip-security           Skip SSH hardening and Fail2ban"
+    echo "  --skip-dns-check          Skip DNS verification (use for localhost/testing)"
     echo "  --dry-run                 Show what would be done without doing it"
     echo "  --verbose                 Enable verbose output"
     echo ""
@@ -2152,6 +2256,10 @@ parse_arguments() {
                 ;;
             --skip-security)
                 SKIP_SECURITY=true
+                shift
+                ;;
+            --skip-dns-check)
+                SKIP_DNS_CHECK=true
                 shift
                 ;;
             --dry-run)
@@ -2248,4 +2356,3 @@ parse_arguments "$@"
 
 # Run main function
 main
-
