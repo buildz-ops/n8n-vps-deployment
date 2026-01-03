@@ -45,21 +45,21 @@ For advanced users who want full control, follow the detailed manual installatio
 
 ## 📋 Table of Contents
 
-- [Features](#features)
-- [Architecture](#architecture)
-- [Deployment Methods](#deployment-methods)
-  - [Automated Deployment](#automated-deployment)
-  - [Manual Deployment](#manual-deployment)
-- [System Requirements](#system-requirements)
-- [Manual Installation Guide](#manual-installation-guide)
-- [Post-Installation](#post-installation)
-- [Backup & Recovery](#backup--recovery)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
-- [Security](#security)
-- [Performance Tuning](#performance-tuning)
-- [Contributing](#contributing)
-- [License](#license)
+- [Features](#-features)
+- [Architecture](#️-architecture)
+- [Deployment Methods](#-deployment-methods)
+  - [Automated Deployment](#option-1-automated-deployment--recommended)
+  - [Manual Deployment](#option-2-manual-deployment-️)
+- [System Requirements](#-system-requirements)
+- [Manual Installation Guide](#-manual-installation-guide)
+- [Post-Installation](#-post-installation)
+- [Backup & Recovery](#-backup--recovery)
+- [Maintenance](#-maintenance)
+- [Troubleshooting](#-troubleshooting)
+- [Security](#-security)
+- [Performance Tuning](#-performance-tuning)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
