@@ -303,17 +303,25 @@ check_system_requirements() {
 check_root_or_sudo() {
     log_step "Checking Privileges"
     
+    # Check if running with sudo (EUID=0 and SUDO_USER is set)
     if [[ $EUID -eq 0 ]]; then
-        log_warning "Running as root. It's recommended to run as a non-root user with sudo."
-        if ! confirm "Continue as root?"; then
-            exit 1
+        if [[ -n "$SUDO_USER" ]]; then
+            # Running with sudo (correct way)
+            log_success "Running with sudo as user: $SUDO_USER"
+        else
+            # Running as actual root user (not recommended)
+            log_warning "Running as actual root user. It's recommended to use 'sudo' instead."
+            if ! confirm "Continue as root?"; then
+                exit 1
+            fi
         fi
     else
-        if ! sudo -n true 2>/dev/null; then
-            log_error "This script requires sudo privileges. Please run: sudo $0"
-            exit 1
-        fi
-        log_success "Sudo access confirmed"
+        # Not running as root at all
+        log_error "This script requires sudo privileges."
+        echo ""
+        echo "Please run: ${CYAN}sudo $0${RESET}"
+        echo ""
+        exit 1
     fi
 }
 
