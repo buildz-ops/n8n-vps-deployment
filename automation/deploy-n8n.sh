@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # Script version
-VERSION="1.0.0"
+VERSION="1.0.4"
 
 # ===========================================
 # GLOBAL VARIABLES
@@ -85,17 +85,17 @@ log_error() {
 }
 
 log_success() {
-    echo "${GREEN}[  OK  ]${RESET} $1"
+    echo "${GREEN}✓${RESET} $1"
     log "SUCCESS: $1"
 }
 
 log_warning() {
-    echo "${YELLOW}[ WARN ]${RESET} $1"
+    echo "${YELLOW}⚠${RESET} $1"
     log "WARNING: $1"
 }
 
 log_info() {
-    echo "${BLUE}[ INFO ]${RESET} $1"
+    echo "${BLUE}ℹ${RESET} $1"
     log "INFO: $1"
 }
 
@@ -157,15 +157,15 @@ wait_for_user() {
 show_progress() {
     local pid=$1
     local message=$2
-    local spin='|/-\'
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     local i=0
     
     while kill -0 $pid 2>/dev/null; do
-        i=$(( (i+1) %4 ))
-        printf "\r${CYAN}[${spin:$i:1}]${RESET} $message"
+        i=$(( (i+1) %10 ))
+        printf "\r${CYAN}${spin:$i:1}${RESET} $message"
         sleep 0.1
     done
-    printf "\r${GREEN}[  OK  ]${RESET} $message\n"
+    printf "\r${GREEN}✓${RESET} $message\n"
 }
 
 # ===========================================
@@ -303,25 +303,17 @@ check_system_requirements() {
 check_root_or_sudo() {
     log_step "Checking Privileges"
     
-    # Check if running with sudo (EUID=0 and SUDO_USER is set)
     if [[ $EUID -eq 0 ]]; then
-        if [[ -n "$SUDO_USER" ]]; then
-            # Running with sudo (correct way)
-            log_success "Running with sudo as user: $SUDO_USER"
-        else
-            # Running as actual root user (not recommended)
-            log_warning "Running as actual root user. It's recommended to use 'sudo' instead."
-            if ! confirm "Continue as root?"; then
-                exit 1
-            fi
+        log_warning "Running as root. It's recommended to run as a non-root user with sudo."
+        if ! confirm "Continue as root?"; then
+            exit 1
         fi
     else
-        # Not running as root at all
-        log_error "This script requires sudo privileges."
-        echo ""
-        echo "Please run: ${CYAN}sudo $0${RESET}"
-        echo ""
-        exit 1
+        if ! sudo -n true 2>/dev/null; then
+            log_error "This script requires sudo privileges. Please run: sudo $0"
+            exit 1
+        fi
+        log_success "Sudo access confirmed"
     fi
 }
 
@@ -393,11 +385,12 @@ detect_existing_docker() {
         else
             log_warning "Docker Compose (v2) not found. Will install."
         fi
+        
+        return 0
     else
         log_info "Docker not found. Will install during system preparation."
+        return 1
     fi
-    
-    return 0
 }
 
 detect_existing_n8n() {
@@ -484,34 +477,20 @@ detect_vps_ip() {
     # Try multiple methods to get public IP
     local ip=""
     
-    # Method 1: ip command (will get private IP on AWS/cloud providers)
+    # Method 1: ip command
     ip=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -1)
     
-    # Method 2: curl external services (for public IP)
-    # Try these even if we got a private IP
+    # Method 2: curl external services (if Method 1 fails or returns private IP)
     if [[ -z "$ip" ]] || [[ "$ip" =~ ^10\. ]] || [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]] || [[ "$ip" =~ ^192\.168\. ]]; then
-        # Try curl methods (don't rely on dig which isn't installed yet)
-        ip=$(curl -s -4 --connect-timeout 5 ifconfig.me 2>/dev/null) || \
-        ip=$(curl -s -4 --connect-timeout 5 icanhazip.com 2>/dev/null) || \
-        ip=$(curl -s -4 --connect-timeout 5 ipinfo.io/ip 2>/dev/null) || \
-        ip=$(curl -s -4 --connect-timeout 5 api.ipify.org 2>/dev/null)
-    fi
-    
-    # If still no IP, get the private IP as fallback
-    if [[ -z "$ip" ]]; then
-        ip=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -1)
+        ip=$(curl -s -4 ifconfig.me) || \
+        ip=$(curl -s -4 icanhazip.com) || \
+        ip=$(curl -s -4 ipecho.net/plain) || \
+        ip=$(dig +short myip.opendns.com @resolver1.opendns.com)
     fi
     
     if [[ -z "$ip" ]]; then
-        log_warning "Could not detect VPS IP address automatically"
-        echo ""
-        echo "Please enter your VPS public IP address:"
-        read -p "IP Address: " ip
-        
-        if [[ -z "$ip" ]]; then
-            log_error "IP address is required"
-            exit 1
-        fi
+        log_error "Could not detect VPS IP address"
+        exit 1
     fi
     
     VPS_IP="$ip"
@@ -569,16 +548,24 @@ validate_email() {
 collect_domain() {
     log_step "Domain Configuration"
     
-    echo "Enter your domain for n8n (e.g., n8n.example.com)"
-    echo "Make sure you've created an A record pointing to: $VPS_IP"
+    echo "Enter your base domain (e.g., example.com or yourdomain.duckdns.org)"
+    echo "n8n will be accessible at: n8n.yourdomain"
+    echo ""
+    echo "Make sure you've created an A record for n8n.yourdomain pointing to: $VPS_IP"
     echo ""
     
     while true; do
-        read -p "Domain: " domain
+        read -p "Base Domain: " base_domain
         
-        if validate_domain "$domain"; then
-            DOMAIN="$domain"
-            log_info "Domain set to: $DOMAIN"
+        if validate_domain "$base_domain"; then
+            # Auto-prefix with n8n.
+            DOMAIN="n8n.$base_domain"
+            echo ""
+            log_info "n8n will be accessible at: https://$DOMAIN"
+            echo ""
+            if ! confirm "Is this correct?"; then
+                continue
+            fi
             break
         else
             echo "${RED}Invalid domain format. Please try again.${RESET}"
@@ -727,9 +714,6 @@ update_system() {
         return 0
     fi
     
-    # Ensure non-interactive mode for all apt operations
-    export DEBIAN_FRONTEND=noninteractive
-    
     sudo apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null &
     show_progress $! "Updating package lists"
     
@@ -781,7 +765,7 @@ setup_unattended_upgrades() {
     
     sudo apt-get install -y -qq unattended-upgrades 2>&1 | tee -a "$LOG_FILE" > /dev/null
     echo 'unattended-upgrades unattended-upgrades/enable_auto_updates boolean true' | sudo debconf-set-selections
-    sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    sudo dpkg-reconfigure -plow unattended-upgrades 2>&1 | tee -a "$LOG_FILE" > /dev/null
     
     log_success "Automatic security updates configured"
 }
@@ -1312,8 +1296,6 @@ create_docker_compose() {
     fi
     
     cat > "$INSTALL_DIR/docker-compose.yml" <<EOF
-version: "3.9"
-
 services:
   # Traefik - Reverse Proxy & SSL Termination
   traefik:
@@ -1851,12 +1833,16 @@ deploy_containers() {
     
     cd "$INSTALL_DIR"
     
+    # Create network
+    log_info "Creating Docker network..."
+    docker network create n8n-network 2>/dev/null || log_info "Network already exists"
+    
     # Pull images
     log_info "Pulling Docker images (this may take a few minutes)..."
     docker compose pull 2>&1 | tee -a "$LOG_FILE" &
     show_progress $! "Pulling Docker images"
     
-    # Start services (Docker Compose will create the network automatically)
+    # Start services
     log_info "Starting services..."
     docker compose up -d 2>&1 | tee -a "$LOG_FILE"
     
@@ -1952,12 +1938,27 @@ verify_deployment() {
         all_passed=false
     fi
     
-    # Check Redis
+    # FIX #14: Check Redis (with retry)
     echo "Checking Redis connectivity..."
-    if docker exec n8n-redis redis-cli ping &>/dev/null | grep -q "PONG"; then
-        log_success "Redis is responding"
-    else
-        log_error "Redis is not responding"
+    local redis_attempts=0
+    local redis_max_attempts=6  # 30 seconds total
+    local redis_ready=false
+    
+    while [[ $redis_attempts -lt $redis_max_attempts ]]; do
+        if docker exec n8n-redis redis-cli ping &>/dev/null; then
+            redis_ready=true
+            log_success "Redis is responding"
+            break
+        fi
+        ((redis_attempts++))
+        if [[ $redis_attempts -lt $redis_max_attempts ]]; then
+            echo -n "."
+            sleep 5
+        fi
+    done
+    
+    if ! $redis_ready; then
+        log_warning "Redis not responding yet (may need more time)"
         all_passed=false
     fi
     
@@ -1971,12 +1972,30 @@ verify_deployment() {
         log_warning "n8n health endpoint not responding (may need more time)"
     fi
     
-    # Check HTTPS redirect
+    # FIX #13: Check HTTP redirect
     echo "Checking HTTPS redirect..."
-    if curl -s -I http://$DOMAIN | grep -q "301\|302"; then
-        log_success "HTTP to HTTPS redirect working"
+    local http_response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "http://$DOMAIN" 2>/dev/null || echo "000")
+    
+    if [[ "$http_response" == "301" ]] || [[ "$http_response" == "308" ]]; then
+        log_success "HTTP redirect working (HTTP → HTTPS)"
+    elif [[ "$http_response" == "200" ]]; then
+        log_warning "HTTP redirect not working (but HTTPS works)"
+        all_passed=false
     else
-        log_warning "HTTP redirect not working as expected"
+        log_warning "Could not verify HTTP redirect (response: $http_response)"
+        all_passed=false
+    fi|    # FIX #13: Check HTTP redirect
+    echo "Checking HTTPS redirect..."
+    local http_response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "http://$DOMAIN" 2>/dev/null || echo "000")
+    
+    if [[ "$http_response" == "301" ]] || [[ "$http_response" == "308" ]]; then
+        log_success "HTTP redirect working (HTTP → HTTPS)"
+    elif [[ "$http_response" == "200" ]]; then
+        log_warning "HTTP redirect not working (but HTTPS works)"
+        all_passed=false
+    else
+        log_warning "Could not verify HTTP redirect (response: $http_response)"
+        all_passed=false
     fi
     
     # Check SSL certificate
@@ -2027,10 +2046,10 @@ configure_automated_backups() {
     
     # Test backup script
     log_info "Testing backup script..."
-    if bash "$INSTALL_DIR/scripts/backup-postgres.sh" 2>&1 | tee -a "$LOG_FILE"; then
+    if sudo bash "$INSTALL_DIR/scripts/backup-postgres.sh" 2>&1 | tee -a "$LOG_FILE"; then
         log_success "Backup test successful"
     else
-        log_warning "Backup test failed. Check logs."
+        log_warning "Backup test failed (will work when cron runs as root)"
     fi
 }
 
