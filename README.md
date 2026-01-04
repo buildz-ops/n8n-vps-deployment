@@ -18,11 +18,11 @@ Complete production-ready deployment of n8n workflow automation on VPS with Dock
 Deploy n8n in **5 steps** (~10 minutes):
 
 ```bash
-# 1. Download automation script
+# 1. Download automation script (use sudo in case you get "Permission Denied")
 wget https://raw.githubusercontent.com/buildz-ops/n8n-vps-deployment/main/automation/deploy-n8n.sh
 
 # 2. Make executable
-chmod +x deploy-n8n.sh
+sudo chmod +x deploy-n8n.sh
 
 # 3. Run deployment
 sudo ./deploy-n8n.sh
