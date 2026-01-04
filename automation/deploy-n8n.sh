@@ -1964,7 +1964,7 @@ verify_deployment() {
     local redis_ready=false
     
     while [[ $redis_attempts -lt $redis_max_attempts ]]; do
-        if docker exec n8n-redis redis-cli ping &>/dev/null | grep -q "PONG"; then
+        if docker exec n8n-redis redis-cli ping 2>/dev/null | grep -q "PONG"; then
             redis_ready=true
             log_success "Redis is responding"
             break
