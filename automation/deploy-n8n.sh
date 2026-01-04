@@ -303,18 +303,13 @@ check_system_requirements() {
 check_root_or_sudo() {
     log_step "Checking Privileges"
     
-    if [[ $EUID -eq 0 ]]; then
-        log_warning "Running as root. It's recommended to run as a non-root user with sudo."
-        if ! confirm "Continue as root?"; then
-            exit 1
-        fi
-    else
-        if ! sudo -n true 2>/dev/null; then
-            log_error "This script requires sudo privileges. Please run: sudo $0"
-            exit 1
-        fi
-        log_success "Sudo access confirmed"
+    if [[ $EUID -ne 0 ]]; then
+        log_error "This script must be run with sudo privileges."
+        log_error "Please run: sudo $0"
+        exit 1
     fi
+    
+    log_success "Running with root privileges"
 }
 
 check_internet_connectivity() {
