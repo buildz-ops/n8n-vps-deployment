@@ -572,7 +572,7 @@ collect_domain() {
     echo "Enter your base domain (e.g., example.com or yourdomain.duckdns.org)"
     echo "n8n will be accessible at: n8n.yourdomain"
     echo ""
-    echo "Make sure you've created an A record for: n8n.yourdomain → $VPS_IP"
+    echo "Make sure you've created an A record for: yourdomain → $VPS_IP"
     echo ""
     
     while true; do
