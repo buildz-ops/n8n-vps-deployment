@@ -5,11 +5,11 @@ Comprehensive automation script for deploying production-ready n8n on VPS with m
 ## Quick Start
 
 ```bash
-# Download the script
+# Download the script (use sudo in case you get "permission denied")
 wget https://raw.githubusercontent.com/buildz-ops/n8n-vps-deployment/main/automation/deploy-n8n.sh
 
 # Make it executable
-chmod +x deploy-n8n.sh
+sudo chmod +x deploy-n8n.sh
 
 # Run the script
 sudo ./deploy-n8n.sh
