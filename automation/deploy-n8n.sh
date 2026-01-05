@@ -2118,6 +2118,48 @@ show_final_output() {
     echo "    ${CYAN}docker compose -f $INSTALL_DIR/docker-compose.yml restart${RESET}"
     echo ""
     echo "${BOLD}Resource Allocation (${TOTAL_RAM_GB}GB RAM):${RESET}"
+    echo ""
+    
+    # Display actual memory allocations based on RAM tier
+    if [[ $TOTAL_RAM_GB -lt 6 ]]; then
+        echo "  PostgreSQL:   1GB   (shared_buffers: 256MB)"
+        echo "  Redis:        256MB (maxmemory: 200MB)"
+        echo "  n8n:          1GB"
+        echo "  n8n-worker:   1GB"
+        echo "  Traefik:      256MB"
+        echo "  ${YELLOW}Configuration: 4GB (Minimal - Testing Only)${RESET}"
+    elif [[ $TOTAL_RAM_GB -lt 8 ]]; then
+        echo "  PostgreSQL:   2GB   (shared_buffers: 512MB)"
+        echo "  Redis:        512MB (maxmemory: 450MB)"
+        echo "  n8n:          1.5GB"
+        echo "  n8n-worker:   1.5GB"
+        echo "  Traefik:      256MB"
+        echo "  ${YELLOW}Configuration: 6GB (Small Workloads)${RESET}"
+    elif [[ $TOTAL_RAM_GB -lt 12 ]]; then
+        echo "  PostgreSQL:   3GB   (shared_buffers: 768MB)"
+        echo "  Redis:        768MB (maxmemory: 700MB)"
+        echo "  n8n:          2GB"
+        echo "  n8n-worker:   2GB"
+        echo "  Traefik:      256MB"
+        echo "  ${GREEN}Configuration: 8GB (Production)${RESET}"
+    elif [[ $TOTAL_RAM_GB -lt 16 ]]; then
+        echo "  PostgreSQL:   4GB   (shared_buffers: 1024MB)"
+        echo "  Redis:        1GB   (maxmemory: 950MB)"
+        echo "  n8n:          2GB"
+        echo "  n8n-worker:   2GB"
+        echo "  Traefik:      256MB"
+        echo "  ${GREEN}Configuration: 12GB (Recommended)${RESET}"
+    else
+        echo "  PostgreSQL:   6GB   (shared_buffers: 1536MB)"
+        echo "  Redis:        2GB   (maxmemory: 1900MB)"
+        echo "  n8n:          3GB"
+        echo "  n8n-worker:   3GB"
+        echo "  Traefik:      256MB"
+        echo "  ${GREEN}Configuration: 16GB+ (High Performance)${RESET}"
+    fi
+    
+    echo ""
+    echo "${BOLD}Container Status:${RESET}"
     docker compose -f $INSTALL_DIR/docker-compose.yml ps --format "table {{.Name}}\t{{.Status}}"
     echo ""
     print_separator
