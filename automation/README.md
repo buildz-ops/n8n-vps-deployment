@@ -45,6 +45,30 @@ The script will guide you through the deployment with interactive prompts.
 
 ---
 
+## Recent Improvements (v1.0.4)
+
+The latest version includes significant bug fixes and enhancements:
+
+### 🔧 Bug Fixes
+- **Redis Connectivity**: Fixed pipe failure issue causing script exit during Redis health checks
+- **Network Creation**: Removed manual network creation (now handled by Docker Compose for proper labeling)
+- **Backup Test Permissions**: Added `sudo` to backup test to prevent silent script failure
+- **Domain Auto-Prefix**: Automatically adds `n8n.` subdomain to base domain for best practices
+- **HTTP Redirect Detection**: Improved HTTPS redirect verification logic
+- **Docker Compose Version**: Removed obsolete `version` field warning
+
+### ✨ New Features
+- **Backup Verification**: Added `--check-backups` command to verify automated backup configuration
+- **RAM Flexibility**: Lowered minimum RAM to 4GB (5 configuration tiers: 4GB, 6GB, 8GB, 12GB, 16GB+)
+- **Improved Feedback**: Better progress indicators and clearer status messages
+- **Enhanced Error Handling**: More graceful handling of timeout scenarios
+
+### 📈 Performance
+- **Resource Optimization**: Dynamic resource allocation based on available system RAM
+- **Startup Reliability**: Redis health check now waits up to 30 seconds for container readiness
+
+---
+
 ## System Requirements
 
 ### Minimum Requirements
@@ -52,7 +76,7 @@ The script will guide you through the deployment with interactive prompts.
 | Component | Requirement |
 |-----------|-------------|
 | **OS** | Ubuntu 22.04/24.04/25.10 or Debian 11/12 |
-| **RAM** | 8GB minimum, 12GB recommended |
+| **RAM** | 4GB minimum, **8GB+ recommended**, 12GB optimal |
 | **Disk** | 20GB minimum, 50GB+ recommended |
 | **Architecture** | x86_64 or aarch64 |
 | **Ports** | 80, 443 (must be available) |
@@ -162,6 +186,20 @@ Trigger immediate backup:
 ./deploy-n8n.sh --backup
 ```
 
+### Check Backup Configuration
+
+Verify if automated backups are configured:
+
+```bash
+./deploy-n8n.sh --check-backups
+```
+
+Shows:
+- Current backup schedule (if configured)
+- Last backup date and size
+- Backup file location
+- Instructions to enable (if not configured)
+
 ### Uninstall
 
 Complete removal (with confirmation prompts):
@@ -202,6 +240,7 @@ sudo ./deploy-n8n.sh --uninstall
 | `--uninstall` | Remove installation |
 | `--backup` | Run backup only |
 | `--check-health` | Health check only |
+| `--check-backups` | Check automated backup configuration |
 | `-h, --help` | Show usage |
 
 ---
@@ -316,7 +355,19 @@ tail -f /var/log/n8n-backup.log
 
 The script automatically adjusts resource limits based on available RAM:
 
-### 8GB RAM (Minimum)
+### 4GB RAM (Minimum - Testing Only)
+
+| Service | Memory Limit |
+|---------|--------------|
+| PostgreSQL | 1GB |
+| Redis | 256MB |
+| n8n | 1GB |
+| n8n-worker | 1GB |
+| Traefik | 256MB |
+
+⚠️ **Warning**: 4GB is the absolute minimum for testing. Not recommended for production use.
+
+### 6GB RAM (Small Workloads)
 
 | Service | Memory Limit |
 |---------|--------------|
@@ -324,6 +375,16 @@ The script automatically adjusts resource limits based on available RAM:
 | Redis | 512MB |
 | n8n | 1.5GB |
 | n8n-worker | 1.5GB |
+| Traefik | 256MB |
+
+### 8GB RAM (Production)
+
+| Service | Memory Limit |
+|---------|--------------|
+| PostgreSQL | 3GB |
+| Redis | 768MB |
+| n8n | 2GB |
+| n8n-worker | 2GB |
 | Traefik | 256MB |
 
 ### 12GB RAM (Recommended)
@@ -336,7 +397,7 @@ The script automatically adjusts resource limits based on available RAM:
 | n8n-worker | 2GB |
 | Traefik | 256MB |
 
-### 16GB+ RAM
+### 16GB+ RAM (High Performance)
 
 | Service | Memory Limit |
 |---------|--------------|
