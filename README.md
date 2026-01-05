@@ -28,7 +28,7 @@ sudo chmod +x deploy-n8n.sh
 sudo ./deploy-n8n.sh
 
 # 4. Answer 3 questions (domain, email, timezone)
-# 5. Access your n8n instance at https://your-domain.com
+# 5. Access your n8n instance at https://n8n.your-domain.com
 ```
 
 **🎯 The script handles everything**: system updates, Docker installation, firewall setup, SSL certificates, database configuration, and more.
