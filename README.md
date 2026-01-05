@@ -33,6 +33,12 @@ sudo ./deploy-n8n.sh
 
 **🎯 The script handles everything**: system updates, Docker installation, firewall setup, SSL certificates, database configuration, and more.
 
+### 🎬 Video Walkthrough
+
+Watch the complete deployment process in action:
+
+https://github.com/user-attachments/assets/YOUR_VIDEO_ID_HERE
+
 👉 **[View Full Automation Guide](./automation/README.md)**
 
 ---
