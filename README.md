@@ -135,7 +135,7 @@ Internet
 **Supported Systems**:
 - Ubuntu 22.04 LTS, 24.04 LTS, 25.10
 - Debian 11, 12
-- 8GB RAM minimum (12GB recommended)
+- 4GB RAM minimum (8GB+ recommended, 12GB optimal)
 
 **Usage**:
 ```bash
@@ -185,8 +185,8 @@ sudo ./deploy-n8n.sh --update
 
 | Component | Requirement |
 |-----------|-------------|
-| **OS** | Ubuntu 22.04+ or Debian 11+ |
-| **RAM** | 8GB minimum, **12GB recommended** |
+| **OS** | Ubuntu 22.04/24.04/25.10 or Debian 11/12 |
+| **RAM** | 4GB minimum, **8GB+ recommended**, 12GB optimal |
 | **Storage** | 20GB minimum, 50GB+ recommended |
 | **CPU** | 2 cores minimum, 4+ recommended |
 | **Network** | Static IP, ports 80/443 accessible |
