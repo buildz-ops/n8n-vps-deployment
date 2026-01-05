@@ -37,7 +37,7 @@ sudo ./deploy-n8n.sh
 
 Watch the complete deployment process in action:
 
-https://github.com/user-attachments/assets/YOUR_VIDEO_ID_HERE
+https://github.com/user-attachments/assets/a7187cba-7b1d-4ecb-ba31-a86c47665ee1
 
 👉 **[View Full Automation Guide](./automation/README.md)**
 
