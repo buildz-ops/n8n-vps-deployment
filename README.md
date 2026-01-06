@@ -479,7 +479,7 @@ crontab -e
 
 ### First-Time Setup
 
-1. **Access n8n**: Navigate to `https://your-domain.com`
+1. **Access n8n**: Navigate to `https://n8n.your-domain.com`
 2. **Create Admin User**: Fill in the registration form
 3. **Start Building**: Create your first workflow!
 
